@@ -7,6 +7,7 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let pingService: PingService;
 let settingsManager: SettingsManager;
+let isQuitting = false;
 
 const isDev = !app.isPackaged;
 
@@ -26,14 +27,17 @@ function createWindow() {
   });
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3000');
-    mainWindow.webContents.openDevTools();
+    // Wait a bit for Vite dev server to start
+    setTimeout(() => {
+      mainWindow?.loadURL('http://localhost:3001');
+      mainWindow?.webContents.openDevTools();
+    }, 1000);
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
 
   mainWindow.on('close', (event) => {
-    if (!app.isQuitting) {
+    if (!isQuitting) {
       event.preventDefault();
       mainWindow?.hide();
     }
@@ -85,7 +89,7 @@ function updateTrayMenu() {
     {
       label: 'Quit',
       click: () => {
-        app.isQuitting = true;
+        isQuitting = true;
         app.quit();
       },
     },
@@ -185,7 +189,7 @@ app.whenReady().then(() => {
     } else if (data.previousStatus === 'offline' && data.overallStatus === 'online') {
       sendNotification('✅ AI Access Restored', 'AI services are back online.');
     } else if (data.overallStatus === 'partial') {
-      const offlineServices = data.services.filter(s => s.status === 'offline').map(s => s.name);
+      const offlineServices = data.services.filter((s: any) => s.status === 'offline').map((s: any) => s.name);
       sendNotification('🟡 Partial AI Access', `Some services are down: ${offlineServices.join(', ')}`);
     }
 
@@ -209,5 +213,5 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  app.isQuitting = true;
+  isQuitting = true;
 });
